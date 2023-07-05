@@ -71,6 +71,8 @@ class _LoginViewState extends State<LoginView> {
                           email: email, password: password);
 
                   print(userCredential);
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/home', (route) => false);
                 } on FirebaseAuthException catch (e) {
                   if (e.code == 'user-not-found') {
                     print('No user found for that email.');

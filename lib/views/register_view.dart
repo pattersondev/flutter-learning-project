@@ -1,9 +1,12 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:somenotes/constants/routes.dart';
 import 'package:somenotes/firebase_options.dart';
-import 'dart:developer' show log;
+
+import 'package:somenotes/utils/show_error_dialog.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -65,19 +68,23 @@ class _RegisterViewState extends State<RegisterView> {
                 final email = _emailController.text;
                 final password = _passwordController.text;
                 try {
-                  final userCredential = await FirebaseAuth.instance
-                      .createUserWithEmailAndPassword(
-                          email: email, password: password);
+                  await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                      email: email, password: password);
+                  await FirebaseAuth.instance.currentUser
+                      ?.sendEmailVerification();
+                  Navigator.of(context).pushNamed(verifyRoute);
                 } on FirebaseAuthException catch (e) {
                   if (e.code == 'weak-password') {
-                    log('The password provided is too weak.');
+                    await showErrorDialog(context, 'Password is too weak.');
                   } else if (e.code == 'email-already-in-use') {
-                    log('The account already exists for that email.');
+                    await showErrorDialog(context, 'email already in use.');
                   } else if (e.code == 'invalid-email') {
-                    log('The email address is not valid.');
+                    await showErrorDialog(context, 'not a valid email.');
+                  } else {
+                    await showErrorDialog(context, 'Error ${e.code}');
                   }
                 } catch (e) {
-                  log('Something went wrong, and it\'s on us.');
+                  await showErrorDialog(context, e.toString());
                 }
               },
               child: const Text('Register')),

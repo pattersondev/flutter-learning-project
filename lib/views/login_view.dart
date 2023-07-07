@@ -4,7 +4,6 @@ import 'package:somenotes/constants/routes.dart';
 import 'package:somenotes/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 export 'login_view.dart';
-import 'dart:developer' show log;
 
 import '../utils/show_error_dialog.dart';
 
@@ -76,16 +75,13 @@ class _LoginViewState extends State<LoginView> {
                       .pushNamedAndRemoveUntil(homeRoute, (route) => false);
                 } on FirebaseAuthException catch (e) {
                   if (e.code == 'user-not-found') {
-                    log('No user found for that email.');
                     await showErrorDialog(context, 'email not found');
                   } else if (e.code == 'wrong-password') {
                     await showErrorDialog(context, 'wrong password');
-                    log('Sorry, that password isn\'t correct.');
                   } else {
                     await showErrorDialog(context, 'Error: ${e.code}');
                   }
                 } catch (e) {
-                  log(e.toString());
                   await showErrorDialog(context, e.toString());
                 }
               },

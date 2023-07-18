@@ -12,6 +12,12 @@ class CouldNotDeleteUser implements Exception {}
 
 class UserAlreadyExists implements Exception {}
 
+class UserNotFound implements Exception {}
+
+class NoteNotFound implements Exception {}
+
+class CouldNotUpdateNote implements Exception {}
+
 class NotesService {
   Database? _db;
 
@@ -68,7 +74,84 @@ class NotesService {
       throw UserAlreadyExists();
     }
     final id = await db.insert(userTable, {emailColumn: email.toLowerCase()});
-    return DatabaseUser(id: id, email: email.toLowerCase());
+    return DatabaseUser(id: id, email: email);
+  }
+
+  Future<DatabaseUser> getUser({required String email}) async {
+    final db = _getDatabaseOrThrow();
+    final results = await db.query(userTable,
+        where: '$emailColumn = ?', whereArgs: [email.toLowerCase()]);
+
+    if (results.isEmpty) {
+      throw UserNotFound();
+    } else {
+      return DatabaseUser.fromRow(results.first);
+    }
+  }
+
+  Future<DatabaseNote> createNote({required DatabaseUser owner}) async {
+    final db = _getDatabaseOrThrow();
+
+    final user = getUser(email: owner.email);
+    if (user != owner) {
+      throw UserNotFound();
+    }
+
+    const text = '';
+    final noteId = await db.insert(noteTable,
+        {text: text, userIdColumn: owner.id, isSyncedWithCloudColumn: 1});
+
+    final note = DatabaseNote(
+        id: noteId, userId: owner.id, isSyncedWithCloud: true, body: text);
+    return note;
+  }
+
+  Future<void> deleteNote({required int id}) async {
+    final db = _getDatabaseOrThrow();
+
+    final deletedCount =
+        await db.delete(userTable, where: '$id = ?', whereArgs: [id]);
+    if (deletedCount < 1) {
+      throw CouldNotDeleteUser();
+    }
+  }
+
+  Future<int> deleteAllNotes() async {
+    final db = _getDatabaseOrThrow();
+    return await db.delete(noteTable);
+  }
+
+  Future<DatabaseNote> getNote({required int id}) async {
+    final db = _getDatabaseOrThrow();
+
+    final notes =
+        await db.query(noteTable, limit: 1, where: 'id = ?', whereArgs: [id]);
+
+    if (notes.isEmpty) {
+      throw NoteNotFound();
+    } else {
+      return DatabaseNote.fromRow(notes.first);
+    }
+  }
+
+  Future<Iterable<DatabaseNote>> getAllNotes() async {
+    final db = _getDatabaseOrThrow();
+    final notes = await db.query(noteTable);
+
+    return notes.map((n) => DatabaseNote.fromRow(n));
+  }
+
+  Future<DatabaseNote> updateNote(
+      {required DatabaseNote note, required String text}) async {
+    final db = _getDatabaseOrThrow();
+    await getNote(id: note.id);
+    final updateCount = await db
+        .update(noteTable, {bodyColumn: text, isSyncedWithCloudColumn: 0});
+    if (updateCount == 0) {
+      throw CouldNotUpdateNote();
+    } else {
+      return await getNote(id: note.id);
+    }
   }
 }
 

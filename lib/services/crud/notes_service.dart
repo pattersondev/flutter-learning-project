@@ -74,6 +74,16 @@ class NotesService {
     return DatabaseUser(id: id, email: email);
   }
 
+  Future<DatabaseUser> getOrCreateUser({required String email}) async {
+    try {
+      return await getUser(email: email);
+    } on UserNotFound {
+      return await createUser(email: email);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<DatabaseUser> getUser({required String email}) async {
     final db = _getDatabaseOrThrow();
     final results = await db.query(userTable,

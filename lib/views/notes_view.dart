@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:somenotes/services/auth/auth_service.dart';
+import 'package:somenotes/services/crud/notes_service.dart';
 
 import '../constants/routes.dart';
 import '../enums/menu_action.dart';
@@ -12,39 +13,75 @@ class NotesView extends StatefulWidget {
 }
 
 class _NotesViewState extends State<NotesView> {
+  late final NotesService _notesService;
+  String get userEmail => AuthService.firebase().currentUser!.email!;
+
+  @override
+  void initState() {
+    _notesService = NotesService();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _notesService.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text(
-            'Main UI',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: const Color.fromARGB(255, 19, 41, 61),
-          actions: [
-            PopupMenuButton(
-              onSelected: (value) async {
-                switch (value) {
-                  case MenuAction.logout:
-                    final shouldLogout = await showLogOutDialog(context);
-                    if (shouldLogout) {
-                      await AuthService.firebase().logout();
-                      Navigator.of(context).pushNamedAndRemoveUntil(
-                          loginRoute, (route) => false);
-                    }
-                    break;
-                }
-              },
-              itemBuilder: (context) {
-                return [
-                  const PopupMenuItem(
-                      value: MenuAction.logout, child: Text('logout'))
-                ];
-              },
-            )
-          ],
+      appBar: AppBar(
+        title: const Text(
+          'Main UI',
+          style: TextStyle(color: Colors.white),
         ),
-        body: const Text('Hello World'));
+        backgroundColor: const Color.fromARGB(255, 19, 41, 61),
+        actions: [
+          PopupMenuButton(
+            onSelected: (value) async {
+              switch (value) {
+                case MenuAction.logout:
+                  final shouldLogout = await showLogOutDialog(context);
+                  if (shouldLogout) {
+                    await AuthService.firebase().logout();
+                    Navigator.of(context)
+                        .pushNamedAndRemoveUntil(loginRoute, (route) => false);
+                  }
+                  break;
+              }
+            },
+            itemBuilder: (context) {
+              return [
+                const PopupMenuItem(
+                    value: MenuAction.logout, child: Text('logout'))
+              ];
+            },
+          )
+        ],
+      ),
+      body: FutureBuilder(
+        future: _notesService.getOrCreateUser(email: userEmail),
+        builder: (context, snapshot) {
+          switch (snapshot.connectionState) {
+            case ConnectionState.done:
+              return StreamBuilder(
+                stream: _notesService.allNotes,
+                builder: (context, snapshot) {
+                  switch (snapshot.connectionState) {
+                    case ConnectionState.waiting:
+                      return const Text('waiting for all notes');
+                    default:
+                      return const CircularProgressIndicator();
+                  }
+                },
+              );
+            default:
+              return const CircularProgressIndicator();
+          }
+        },
+      ),
+    );
   }
 }
 

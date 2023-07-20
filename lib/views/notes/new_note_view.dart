@@ -54,11 +54,18 @@ class _NewNoteViewState extends State<NewNoteView> {
     }
   }
 
-  // void _textControllerListener() async {
-  //   _textController.addListener(() {
+  void _textControllerListener() async {
+    final note = _note;
+    if (note != null) {
+      final text = _textController.text;
+      await _notesService.updateNote(note: note, text: text);
+    }
+  }
 
-  //   })
-  // }
+  void _setupTextControllerListener() {
+    _textController.removeListener(_textControllerListener);
+    _textController.addListener(_textControllerListener);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +77,26 @@ class _NewNoteViewState extends State<NewNoteView> {
         ),
         backgroundColor: const Color.fromARGB(255, 19, 41, 61),
       ),
-      body: const Text('Write the new note'),
+      body: FutureBuilder(
+        future: createNewNote(),
+        builder: (context, snapshot) {
+          switch (snapshot.connectionState) {
+            case ConnectionState.done:
+              _note = snapshot.data;
+              _setupTextControllerListener();
+              return TextField(
+                controller: _textController,
+                keyboardType: TextInputType.multiline,
+                maxLines: null,
+                decoration: const InputDecoration(
+                  hintText: 'Start typing your note...',
+                ),
+              );
+            default:
+              return const CircularProgressIndicator();
+          }
+        },
+      ),
     );
   }
 }
